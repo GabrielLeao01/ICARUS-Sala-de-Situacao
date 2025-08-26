@@ -15,7 +15,7 @@ O projeto tem como objetivo oferecer uma ferramenta de apoio à tomada de decis�
 - **Gerenciamento de recursos urbanos**, como:
   - Linhas de ônibus afetadas;
   - Unidades de saúde próximas às áreas de risco;
-  - Sugestões automáticas de medidas corretivas (ex: redirecionamento de rotas, readequação de pacientes etc.).
+  - Sugestões automáticas de medidas corretivas (ex: redirecionamento de rotas, readequação de pacientes etc.);
 
 ---
 
@@ -25,7 +25,7 @@ O projeto tem como objetivo oferecer uma ferramenta de apoio à tomada de decis�
 - Dash
 - Plotly
 - Pandas
-- OpenStreetMap + Leaflet
+- OpenStreetMap
 - GeoPandas 
 
 ---
