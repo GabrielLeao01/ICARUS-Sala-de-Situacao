@@ -54,6 +54,3 @@ Este projeto está licenciado sob a [GPLv3](https://www.gnu.org/licenses/gpl-3.0
 
 ## Autor
 Gabriel Leão Bernarde
-
-## 📁 Estrutura do Projeto
-
