@@ -30,6 +30,11 @@ def layout_situacao_atual():
 				href="/gerenciamento",
 				className="btn-gerenciamento"
 			),
+			html.A(
+				"Acessar Gráficos",
+				href="/graficos",
+				className="btn-gerenciamento"
+			),
 		], className="sidebar"),
 
 		html.Div([
@@ -43,6 +48,29 @@ def layout_situacao_atual():
 			html.Div(id="alerta-poligonos", className="alerta-poligonos"),
 		], className="alertas"),
 
+	], className="container")
+
+def layout_graficos():
+	graficos_disponiveis = Graficos.listar_graficos()
+	return html.Div([
+		html.Div([
+			html.H3("Gráficos"),
+			html.A(
+				"↩ Voltar para Situação Atual",
+				href="/",
+				className="btn-gerenciamento"
+			),
+			dcc.Dropdown(
+				id="dropdown-graficos",
+				options=[{"label": nome, "value": nome} for nome in graficos_disponiveis],
+				placeholder="Escolha um gráfico",
+				style={"marginTop": "20px"}
+			),
+		], className="sidebar"),
+
+		html.Div([
+			dcc.Graph(id="grafico-visualizacao", style={"height": "100%", "width": "100%"})
+		], className="mapa"),
 	], className="container")
 
 def layout_gerenciamento_recursos():
@@ -138,8 +166,27 @@ def atualizar_mapa_gerenciamento(unidade_dropdown, controle):
 def exibir_pagina(pathname):
 	if pathname == '/gerenciamento':
 		return layout_gerenciamento_recursos()
+	elif pathname == '/graficos':
+		return layout_graficos()
 	else:
 		return layout_situacao_atual()
+	
+@app.callback(
+	Output("grafico-visualizacao", "figure"),
+	Input("dropdown-graficos", "value"),
+	prevent_initial_call=True
+)
+def exibir_grafico_callback(grafico_id):
+	import plotly.graph_objs as go
+	if not grafico_id:
+		return go.Figure()
+	data = Graficos.obter_grafico(grafico_id)
+
+	if data and 'data' in data and 'layout' in data:
+		return go.Figure(data=data['data'], layout=data['layout'])
+	elif data:
+		return go.Figure(data=data)
+	return go.Figure()
 
 if __name__ == "__main__":
 	app.run_server(debug=True, host="192.168.15.49", port=8050)
