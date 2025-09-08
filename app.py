@@ -1,121 +1,140 @@
 import dash
 from dash import dcc, html
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State, ALL
 from datetime import datetime
 import plotly.express as px
-
+import dash_bootstrap_components as dbc
 from icarus.situacao import Situacao
 from icarus.alerta import Alerta
 from icarus.recursos import Recursos
 from icarus.graficos import Graficos
 
 import pandas as pd
+import os
 
-CSV_PATH = "shapefiles/unidades-saude.csv"
 SHAPE_PATH = "shapefiles/area_prioritaria.shp"
-CSV_REESTRUTURADO_PATH = "shapefiles/unidades_de_saude_reestruturadas.csv"
-
-df_saude = pd.read_csv(CSV_PATH)
-df_saude_reestruturado = pd.read_csv(CSV_REESTRUTURADO_PATH)
-
 situacao = Situacao(SHAPE_PATH)
-recursos = Recursos(df_saude, df_saude_reestruturado)
+
 
 def layout_situacao_atual():
-	return html.Div([
-		html.Div([
-			html.H3("Situação Atual"),
-			html.A(
-				"Acessar Gerenciamento de Recursos",
-				href="/gerenciamento",
-				className="btn-gerenciamento"
-			),
-			html.A(
-				"Acessar Gráficos",
-				href="/graficos",
-				className="btn-gerenciamento"
-			),
-		], className="sidebar"),
+    return dbc.Row([
+        dbc.Col(
+            dbc.Card([
+                dbc.CardBody([
+                    html.Div([
+                        html.H2("Sala de Situação", className="mb-4"),
+                    ], className="text-center"),
+                    dbc.Button([
+                        html.I(className="bi bi-building me-2"), "Gerenciamento de Recursos"
+                    ], href="/gerenciamento", color="primary", className="mb-3 w-100 fs-5"),
+                    dbc.Button([
+                        html.I(className="bi bi-bar-chart-line me-2"), "Gráficos"
+                    ], href="/graficos", color="secondary", className="w-100 fs-5"),
+                ])
+            ], className="bg-dark bg-opacity-75 text-light shadow-lg rounded-4 border-0 p-2"),
+            width=2, className="sidebar p-0"
+        ),
+        dbc.Col(
+            dbc.Card([
+                dbc.CardBody([
+                    dcc.Graph(
+                        id="mapa-situacao",
+                        className="mapa-graph",
+                        style={"height": "65vh", "width": "100%"}
+                    ),
+                    html.Div(id="texto-atualizacao", className="texto-atualizacao text-end mt-2"),
+                    dcc.Interval(id="interval-situacao", interval=60*1000, n_intervals=0)
+                ])  
+            ], className="bg-dark bg-opacity-75 text-light shadow-lg rounded-4 border-0 p-2"),
+            width={"xs": 12, "md": 8}, className="mapa p-0"
+        ),
+        dbc.Col(
+            dbc.Card([
+                dbc.CardBody([
+                    html.H4([
+                        html.I(className="bi bi-exclamation-triangle-fill me-2"), "Alertas"
+                    ], className="mb-3"),
+                    html.Div(id="alerta-poligonos", className="alerta-poligonos"),
+                ])
+            ], className="bg-dark bg-opacity-75 text-light shadow-lg rounded-4 border-0 p-2"),
+            width=2, className="alertas p-0"
+        ),
+    ], className="g-3 align-items-stretch", style={"height": "100vh"})
 
-		html.Div([
-			dcc.Graph(id="mapa-situacao", className="mapa-graph"),
-			html.Div(id="texto-atualizacao", className="texto-atualizacao"),
-			dcc.Interval(id="interval-situacao", interval=60*1000, n_intervals=0)
-		], className="mapa"),
 
-		html.Div([
-			html.H4("Alertas existentes"),
-			html.Div(id="alerta-poligonos", className="alerta-poligonos"),
-		], className="alertas"),
-
-	], className="container")
 
 def layout_graficos():
 	graficos_disponiveis = Graficos.listar_graficos()
-	return html.Div([
-		html.Div([
-			html.H3("Gráficos"),
-			html.A(
-				"↩ Voltar para Situação Atual",
-				href="/",
-				className="btn-gerenciamento"
+	return dbc.Row([
+			dbc.Col(
+				dbc.Card([
+					dbc.CardBody([
+						html.H3("Gráficos", className="mb-4"),
+						dbc.Button("↩ Voltar para Situação Atual", href="/", color="secondary", className="mb-3 w-100"),
+						dcc.Dropdown(
+							id="dropdown-graficos",
+							options=[{"label": nome, "value": nome} for nome in graficos_disponiveis],
+							placeholder="Escolha um gráfico",
+							style={"marginTop": "10px"}
+						),
+					])
+				], className="mb-4"), width=3, className="sidebar"
 			),
-			dcc.Dropdown(
-				id="dropdown-graficos",
-				options=[{"label": nome, "value": nome} for nome in graficos_disponiveis],
-				placeholder="Escolha um gráfico",
-				style={"marginTop": "20px"}
+			dbc.Col(
+				dbc.Card([
+					dbc.CardBody([
+						dcc.Graph(id="grafico-visualizacao", style={"height": "100%", "width": "100%"})
+					])
+				], className="mb-4"), width=9, className="mapa"
 			),
-		], className="sidebar"),
-
-		html.Div([
-			dcc.Graph(id="grafico-visualizacao", style={"height": "100%", "width": "100%"})
-		], className="mapa"),
-	], className="container")
+		], className="g-2 align-items-stretch")
 
 def layout_gerenciamento_recursos():
-	return html.Div([
+	recursos_disponiveis = Recursos.listar_recursos()
+	return dbc.Row([
 		dcc.Store(id="controle-mapa", data={"atualizar": 0}),
-
-		html.Div([
-			html.H3("Gerenciamento de Recursos"),
-			html.A(
-				"↩ Voltar para Situação Atual",
-				href="/",
-				className="btn-gerenciamento"
-			),
-
-			dcc.Dropdown(
-				id="dropdown-unidades",
-				options=[{"label": nome, "value": nome} for nome in sorted(recursos.listar_recursos())],
-				placeholder="Escolha uma unidade",
-				style={"marginTop": "20px"}
-			),
-
-			html.Div([
-				html.Div("Alterações foram feitas na alocação de unidades de saúde, deseja acatar?", style={
-					"marginTop": "20px",
-					"marginBottom": "10px"
-				}),
-				html.Button("Sim", id="btn-acatar", n_clicks=0, className="btn-sim"),
-				html.Button("Não", id="btn-rejeitar", n_clicks=0, className="btn-nao"),
-			])
-		], className="sidebar"),
-
-		html.Div([
-			dcc.Graph(id="mapa-gerenciamento", style={"height": "100%", "width": "100%"})
-		], className="mapa"),
-	], className="container")
+		dbc.Col(
+			dbc.Card([
+				dbc.CardBody([
+					html.H3("Gerenciamento de Recursos", className="mb-4", style={"fontSize": "18px"}),
+					dbc.Button("↩ Voltar para Situação Atual", href="/", color="secondary", className="mb-3 w-100"),
+					dbc.Label("Escolha o recurso", style={"marginTop": "10px"}),
+					dcc.Dropdown(
+						id="dropdown-recurso",
+						options=[{"label": nome.capitalize(), "value": nome} for nome in recursos_disponiveis],
+						placeholder="Selecione o recurso",
+						className="mb-3"
+					),
+					dcc.Dropdown(id="dropdown-unidades", options=[], placeholder="Selecione a unidade", style={"display": "none"}),
+					html.Div(id="popup-reestruturacao"),
+				])
+			], className="mb-4"), width=3, className="sidebar"
+		),
+		dbc.Col(
+			dbc.Card([
+				dbc.CardBody([
+					dcc.Graph(id="mapa-gerenciamento", style={"height": "100%", "width": "100%"})
+				])
+			], className="mb-4"), width=9, className="mapa"
+		),
+	], className="g-2 align-items-stretch")
 
 
 
-app = dash.Dash(__name__, suppress_callback_exceptions=True)
+app = dash.Dash(
+    __name__,
+    suppress_callback_exceptions=True,
+    external_stylesheets=[
+        dbc.themes.CYBORG,
+        "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
+    ]
+)
 app.title = "Interface ICARUS"
 
-app.layout = html.Div([
-	dcc.Location(id='url', refresh=False),
-	html.Div(id='page-content')
-])
+app.layout = dbc.Container([
+    dcc.Location(id='url', refresh=False),
+    html.Div(id='page-content')
+], fluid=True, className="bg-gradient bg-dark min-vh-100")
 
 @app.callback(
 	Output("mapa-situacao", "figure"),
@@ -135,32 +154,27 @@ def atualizar_mapa_situacao(n):
 def exibir_alertas_callback(n):
 	return Alerta.exibir_alertas(situacao.gdf)
 
+
 @app.callback(
 	Output("dropdown-unidades", "options"),
+	Output("popup-reestruturacao", "children"),
 	Output("controle-mapa", "data"),
-	Input("btn-acatar", "n_clicks"),
-	Input("btn-rejeitar", "n_clicks"),
+	Input("dropdown-recurso", "value"),
+	Input({'type': 'btn-acatar', 'index': ALL}, 'n_clicks'),
+	Input({'type': 'btn-rejeitar', 'index': ALL}, 'n_clicks'),
 	prevent_initial_call=True
 )
-def obter_reestruturacao_proposta(n_acatar, n_rejeitar):
-	ctx = dash.callback_context
-	if not ctx.triggered:
-		raise dash.exceptions.PreventUpdate
-	trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
-	if trigger_id == "btn-acatar":
-		recursos.obter_reestruturacao_proposta(True)
-	elif trigger_id == "btn-rejeitar":
-		recursos.obter_reestruturacao_proposta(False)
-	opcoes = [{"label": nome, "value": nome} for nome in sorted(recursos.listar_recursos())]
-	return opcoes, {"atualizar": datetime.now().timestamp()}
+def atualizar_unidades_popup_controle(recurso, n_acatar_list, n_rejeitar_list):
+	return Recursos.atualizar_unidades_popup_controle(recurso, n_acatar_list, n_rejeitar_list)
+
 
 @app.callback(
 	Output("mapa-gerenciamento", "figure"),
 	Input("dropdown-unidades", "value"),
 	Input("controle-mapa", "data")
 )
-def atualizar_mapa_gerenciamento(unidade_dropdown, controle):
-	return recursos.obter_mapa_recurso(unidade_dropdown)
+def obter_mapa_recurso_callback(unidade_dropdown, controle):
+	return Recursos.obter_mapa_recurso(unidade_dropdown, controle)
 
 @app.callback(Output('page-content', 'children'), Input('url', 'pathname'))
 def exibir_pagina(pathname):
@@ -189,4 +203,4 @@ def exibir_grafico_callback(grafico_id):
 	return go.Figure()
 
 if __name__ == "__main__":
-	app.run_server(debug=True, host="192.168.15.49", port=8050)
+	app.run(debug=True, host="192.168.15.49", port=8050)
