@@ -12,54 +12,57 @@ from icarus.graficos import Graficos
 import pandas as pd
 import os
 
-SHAPE_PATH = "shapefiles/area_prioritaria.shp"
-situacao = Situacao(SHAPE_PATH)
+import glob
+
+
+SITUACAO_DIR = os.path.join("shapefiles", "situacao")
+verifica_shapes = glob.glob(os.path.join(SITUACAO_DIR, "*.shp")) if os.path.exists(SITUACAO_DIR) else []
+situacao = None
+if verifica_shapes:
+	situacao = Situacao(verifica_shapes[0])
+
 
 
 def layout_situacao_atual():
-    return dbc.Row([
-        dbc.Col(
-            dbc.Card([
-                dbc.CardBody([
-                    html.Div([
-                        html.H2("Sala de Situação", className="mb-4"),
-                    ], className="text-center"),
-                    dbc.Button([
-                        html.I(className="bi bi-building me-2"), "Gerenciamento de Recursos"
-                    ], href="/gerenciamento", color="primary", className="mb-3 w-100 fs-5"),
-                    dbc.Button([
-                        html.I(className="bi bi-bar-chart-line me-2"), "Gráficos"
-                    ], href="/graficos", color="secondary", className="w-100 fs-5"),
-                ])
-            ], className="bg-dark bg-opacity-75 text-light shadow-lg rounded-4 border-0 p-2"),
-            width=2, className="sidebar p-0"
-        ),
-        dbc.Col(
-            dbc.Card([
-                dbc.CardBody([
-                    dcc.Graph(
-                        id="mapa-situacao",
-                        className="mapa-graph",
-                        style={"height": "65vh", "width": "100%"}
-                    ),
-                    html.Div(id="texto-atualizacao", className="texto-atualizacao text-end mt-2"),
-                    dcc.Interval(id="interval-situacao", interval=60*1000, n_intervals=0)
-                ])  
-            ], className="bg-dark bg-opacity-75 text-light shadow-lg rounded-4 border-0 p-2"),
-            width={"xs": 12, "md": 8}, className="mapa p-0"
-        ),
-        dbc.Col(
-            dbc.Card([
-                dbc.CardBody([
-                    html.H4([
-                        html.I(className="bi bi-exclamation-triangle-fill me-2"), "Alertas"
-                    ], className="mb-3"),
-                    html.Div(id="alerta-poligonos", className="alerta-poligonos"),
-                ])
-            ], className="bg-dark bg-opacity-75 text-light shadow-lg rounded-4 border-0 p-2"),
-            width=2, className="alertas p-0"
-        ),
-    ], className="g-3 align-items-stretch", style={"height": "100vh"})
+	return dbc.Row([
+			dbc.Col(
+				dbc.Card([
+					dbc.CardBody([
+						html.Div([
+							html.H2("Sala de Situação", className="mb-4"),
+						], className="text-center"),
+						dbc.Button([
+							html.I(className="bi bi-building me-2"), "Gerenciamento de Recursos"
+						], href="/gerenciamento", color="primary", className="mb-3 w-100 fs-5"),
+						dbc.Button([
+							html.I(className="bi bi-bar-chart-line me-2"), "Gráficos"
+						], href="/graficos", color="secondary", className="w-100 fs-5"),
+					])
+				], className="mb-4"), width=3, className="sidebar"
+			),
+			dbc.Col(
+				dbc.Card([
+					dbc.CardBody([
+						dcc.Graph(
+							id="mapa-situacao",
+							className="mapa-graph grafico-full",
+						),
+						html.Div(id="texto-atualizacao", className="texto-atualizacao text-end mt-2 update-text-white"),
+						dcc.Interval(id="interval-situacao", interval=60*1000, n_intervals=0),
+					])
+				], className="mb-4"), width=6, className="mapa"
+			),
+			dbc.Col(
+				dbc.Card([
+					dbc.CardBody([
+						html.H4([
+							html.I(className="bi bi-exclamation-triangle-fill me-2"), "Alertas"
+						], className="mt-2"),
+						html.Div(id="alerta-poligonos", className="alerta-poligonos"),
+					])
+				], className="mb-4"), width=3, className="sidebar"
+			),
+	], className="g-2 align-items-stretch full-height")
 
 
 
@@ -142,6 +145,9 @@ app.layout = dbc.Container([
 	Input("interval-situacao", "n_intervals")
 )
 def atualizar_mapa_situacao(n):
+	import plotly.graph_objs as go
+	if situacao is None:
+		return go.Figure(), "Nenhum shapefile de situação disponível"
 	fig = situacao.obter_mapa_base(px)
 	fig = situacao.obter_regioes_afetadas(fig, px)
 	hora_atual = datetime.now().strftime("Última atualização: %H:%M:%S")
@@ -152,6 +158,8 @@ def atualizar_mapa_situacao(n):
 	Input("interval-situacao", "n_intervals")
 )
 def exibir_alertas_callback(n):
+	if situacao is None:
+		return ""
 	return Alerta.exibir_alertas(situacao.gdf)
 
 
